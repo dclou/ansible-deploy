@@ -1,0 +1,14 @@
+- hosts: "{{nodes}}"
+  become: false
+  tasks:
+    - include: regloop.yml
+      with_inventory_hostnames:
+        - hosts
+    - lineinfile:
+        path: /etc/hosts
+        line: "{{hostvars[item].ip}} {{item}}"
+      become: true
+      with_inventory_hostnames:
+        - managers
+        - workers
+

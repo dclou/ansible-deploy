@@ -1,0 +1,101 @@
+- name: Install packages
+  pacman:
+    name: "{{item}}"
+    state: present
+  with_items:
+    - qemu
+    - libvirt
+    - libvirt-python
+    - dhcp
+    - tftp-hpa
+    - fcgiwrap
+    - nginx
+    - syslinux
+    - squashfs-tools
+    - openbsd-netcat
+- name: Configure bridge device
+  template:
+    src: "templates/{{item}}.j2"
+    dest: "/etc/systemd/network/{{item}}"
+  with_items:
+    - virtual.netdev
+    - virtual.network
+- name: Configure tftpd
+  copy:
+    src: files/tftpd.conf
+    dest: /etc/conf.d/tftpd
+- name: Configure dhcpd generic
+  lineinfile:
+    path: /etc/dhcpd.conf
+    line: 'include "/etc/dhcpd-virt.conf";'
+- name: Make nginx dirs
+  file:
+    path: "{{item}}"
+    state: directory
+  with_items:
+    - /etc/nginx/sites
+    - /etc/nginx/default
+- name: Configure nginx generic
+  copy:
+    src: files/nginx.conf
+    dest: /etc/nginx/nginx.conf
+- name: Configure nginx default
+  copy: 
+    src: files/nginx-default.conf
+    dest: /etc/nginx/sites/00-default
+- name: Copy vm directory structure
+  copy:
+    src: files/vm
+    dest: /
+- name: Make sign.sh executable
+  file: 
+    path: /vm/keys/sign.sh
+    mode: 0755
+- name: Ensure ssh key
+  shell: ssh-keygen -t rsa -N "" || true
+- name: Slurp public
+  slurp:
+    src: /home/user/.ssh/id_rsa.pub
+  register: pub
+- name: Ensure public
+  lineinfile:
+    path: /home/user/.ssh/authorized_keys
+    line: "{{pub.content | b64decode | regex_replace('\\s*$', '')}}"
+- name: Copy auth
+  shell: cp /home/user/.ssh/authorized_keys /vm/keys/
+- name: Configure ssh host CA
+  shell: ssh-keygen -t rsa -f /vm/keys/host_ca -N "" || true
+- name: Configure ssh user CA
+  shell: ssh-keygen -t rsa -f /vm/keys/user_ca -N "" || true
+- name: Assign to http
+  file:
+    path: "{{item}}"
+    group: http
+    mode: 0440
+  with_items:
+    - /vm/keys/host_ca
+    - /vm/keys/user_ca
+- name: Sign ssh host
+  shell: ssh-keygen -s /vm/keys/host_ca -I {{inventory_hostname}} -h -n {{inventory_hostname}} /etc/ssh/ssh_host_rsa_key.pub || true
+- name: Configure sshd trsuted CA
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    line: "TrustedUserCAKeys /vm/keys/user_ca"
+- name: Cnfigure sshd host cert
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    line: "HostCertificate /etc/ssh/ssh_host_rsa_key-cert.pub"
+- name: Start services
+  systemd:
+    name: "{{item}}"
+    enabled: true
+    state: restarted
+  with_items:
+    - libvirtd
+    - libvirt-guests
+    - dhcpd4
+    - tftpd
+    - fcgiwrap
+    - nginx
+    - systemd-networkd
+    - systemd-resolved

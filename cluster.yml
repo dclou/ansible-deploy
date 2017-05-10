@@ -1,0 +1,29 @@
+- hosts: hosts
+  become: true
+  roles:
+    - hosts
+  tasks:
+    - wait_for:
+        host: "{{hostvars[item].ip}}"
+        port: 50000
+        timeout: 3600
+      with_inventory_hostnames:
+        - managers
+        - workers
+- include: tasks/register.yml 
+  vars: 
+    nodes: localhost
+- include: tasks/register.yml 
+  vars: 
+    nodes: hosts managers workers
+- hosts: managers
+  become: true
+  roles:
+    - common
+    - managers
+- hosts: managers[0] workers
+  become: true
+  roles:
+    - common
+    - workers
+

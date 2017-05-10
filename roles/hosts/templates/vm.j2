@@ -1,0 +1,25 @@
+<domain type="kvm">
+  <name>{{item}}</name>
+  <os>
+    <type>hvm</type>
+    <boot dev="hd"/>
+    <boot dev="network"/>
+  </os>
+  <memory unit="MiB">{{hostvars[item].memory}}</memory>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <graphics type="vnc" port="-1">"
+	<listen type="address" address="127.0.0.1"/>
+    </graphics>
+    <interface type="bridge">
+      <source bridge="virt0"/>
+      <mac address="{{hostvars[item].macaddr}}"/>
+      <model type="virtio"/>
+    </interface>
+    <disk type="file" device="disk">
+      <source file="/vm/images/{{item}}"/>
+      <target dev="hda" bus="ide"/>
+    </disk>
+    <input type="keyboard" bus="usb"/>
+  </devices>
+</domain>

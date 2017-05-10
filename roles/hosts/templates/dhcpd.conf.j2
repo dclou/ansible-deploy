@@ -1,0 +1,28 @@
+option space pxelinux;
+option pxelinux.magic      code 208 = string;
+option pxelinux.configfile code 209 = text;
+option pxelinux.pathprefix code 210 = text;
+option pxelinux.reboottime code 211 = unsigned integer 32;
+
+{% set net = hostvars[inventory_hostname].net %}
+
+subnet {{net | ipaddr('network')}} netmask {{net | ipaddr('netmask')}} {
+	option routers {{net | ipaddr('address')}};
+	next-server {{net | ipaddr('address')}};
+	filename "/arch/syslinux/lpxelinux.0";
+	site-option-space "pxelinux";
+	if exists dhcp-parameter-request-list {
+		option dhcp-parameter-request-list = concat(option dhcp-parameter-request-list,d0,d1,d2,d3);
+	}
+	option pxelinux.configfile "arch_pxe.cfg";
+	option pxelinux.pathprefix "/arch/";
+
+}
+
+{% for host in groups['managers'] | union(groups['workers']) %}
+host {{host}} {
+	hardware ethernet {{hostvars[host].macaddr}};
+	fixed-address {{hostvars[host].ip}};
+	option host-name = "{{host}}";
+}
+{% endfor %}

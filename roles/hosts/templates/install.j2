@@ -1,0 +1,34 @@
+[Unit]
+Description=Install Archlinux
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/env sh -c '\
+        parted /dev/sda mklabel msdos && \
+        parted /dev/sda mkpart primary 0% 100% && \
+	mkfs.ext4 /dev/sda1 && \
+	mount /dev/sda1 /mnt && \
+	echo "Server = http://mirror.yandex.ru/archlinux/\\$repo/os/\\$arch" > /etc/pacman.d/mirrorlist && \
+	pacstrap /mnt base grub openssh python sudo docker openbsd-netcat && \
+	genfstab -U /mnt >> /mnt/etc/fstab && \
+	arch-chroot /mnt grub-install /dev/sda && \
+	arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg && \
+	arch-chroot /mnt groupadd -g 40 sudo && \
+	arch-chroot /mnt useradd -m -G sudo user && \
+	arch-chroot /mnt usermod -aG docker user && \
+	echo "%%sudo ALL=(ALL) NOPASSWD: ALL" > /mnt/etc/sudoers.d/sudogroup && \
+	hostname -s > /mnt/etc/hostname && \
+        cp /etc/systemd/system/post-install.service /mnt/etc/systemd/system/post-install.service && \
+	arch-chroot /mnt systemctl enable post-install && \
+	arch-chroot /mnt systemctl enable sshd && \
+	arch-chroot /mnt systemctl enable systemd-networkd && \
+	arch-chroot /mnt systemctl enable systemd-resolved && \
+	echo -e "[Match]\\nName=en*\\n[Network]\\nDHCP=ipv4" > /mnt/etc/systemd/network/basic.network && \
+	reboot; \
+'
+
+[Install]
+WantedBy=multi-user.target

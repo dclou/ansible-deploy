@@ -1,0 +1,7 @@
+- include: proxy.yml
+  with_items:
+    - init
+    - archinst
+  loop_control:
+    loop_var: mile
+- include: virtual.yml

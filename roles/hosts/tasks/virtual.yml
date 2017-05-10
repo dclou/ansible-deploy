@@ -1,0 +1,31 @@
+- name: Configure dhcpd4
+  template:
+    src: templates/dhcpd.conf.j2
+    dest: /etc/dhcpd-virt.conf
+- name: Hackfix
+  shell: "ip addr add {{hostvars[inventory_hostname].net | ipaddr('address')}} dev virt0 || true"
+- name: restart dhcpd4
+  systemd:
+    name: dhcpd4
+    enabled: true
+    state: restarted
+- name: Build pool
+  shell: virsh pool-create-as vmpool dir --target /vm/images --build || true
+- name: Make volumes
+  shell: virsh vol-create-as vmpool {{item}} {{hostvars[item].disk}} || true
+  with_items:
+    - "{{ groups['managers'] | union(groups['workers']) }}"
+- name: Define vms
+  virt:
+    name: "{{item}}"
+    command: define
+    xml: "{{ lookup('template', 'templates/vm.j2') }}"
+  with_items:
+    - "{{ groups['managers'] | union(groups['workers']) }}"
+- name: Start vms
+  virt:
+    name: "{{item}}"
+    state: running
+  with_items:
+    - "{{ groups['managers'] | union(groups['workers']) }}"
+

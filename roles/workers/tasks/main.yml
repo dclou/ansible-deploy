@@ -1,0 +1,10 @@
+- name: Get worker token
+  shell: docker swarm join-token -q worker
+  register: token
+  when: inventory_hostname == groups['managers'][0]
+- name: Leave if already in
+  shell: docker swarm leave --force || true
+  when: inventory_hostname != groups['managers'][0]
+- name: Join by worker token
+  shell: docker swarm join --token {{ hostvars[groups['managers'][0]].token.stdout }} {{ groups['managers'][0] }}
+  when: inventory_hostname != groups['managers'][0]

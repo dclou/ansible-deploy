@@ -1,0 +1,9 @@
+- stat:
+    path: "/vm/milestones/{{mile}}"
+  register: reg
+- include: "{{mile}}.yml"
+  when: reg.stat.exists == false
+- file:
+    path: "/vm/milestones/{{mile}}"
+    state: touch
+  when: reg.stat.exists == false
