@@ -9,6 +9,7 @@ Local:
 
 Remote:
 - Archlinux with ssh access
+- python
 
 Invocation
 ==========
