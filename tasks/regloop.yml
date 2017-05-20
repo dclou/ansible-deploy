@@ -1,5 +1,5 @@
 - uri:
-    url: "http://{{hostvars[item].ansible_host}}/keys/host_ca.pub"
+    url: "http://{{hostvars[item].net | ipaddr('1') | ipaddr('address')}}/secret/host_ca.pub"
     return_content: true
   register: hosts_pub
 - file:

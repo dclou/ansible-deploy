@@ -1,31 +1,35 @@
-- name: Configure dhcpd4
-  template:
-    src: templates/dhcpd.conf.j2
-    dest: /etc/dhcpd-virt.conf
-- name: Hackfix
-  shell: "ip addr add {{hostvars[inventory_hostname].net | ipaddr('address')}} dev virt0 || true"
-- name: restart dhcpd4
-  systemd:
-    name: dhcpd4
-    enabled: true
-    state: restarted
-- name: Build pool
-  shell: virsh pool-create-as vmpool dir --target /vm/images --build || true
-- name: Make volumes
+- name: Make volume
   shell: virsh vol-create-as vmpool {{item}} {{hostvars[item].disk}} || true
-  with_items:
-    - "{{ groups['managers'] | union(groups['workers']) }}"
-- name: Define vms
+
+- name: Make confdir
+  file:
+    path: "/vm/conf/{{item}}/ssh"
+    state: directory
+
+- name: Make hostname
+  template:
+    src: templates/hostname.j2
+    dest: "/vm/conf/{{item}}/hostname"
+
+- name: Copy authorized_keys
+  shell: cp /vm/keys/authorized_keys "/vm/conf/{{item}}/authorized_keys"
+
+- name: Gen ssh host key
+  shell: ssh-keygen -f "/vm/conf/{{item}}/ssh/ssh_host_rsa_key" -N "" -t rsa || true
+
+- name: Sign ssh host
+  shell: ssh-keygen -s /vm/secret/host_ca -I "{{item}}" -h -n "{{item}}" "/vm/conf/{{item}}/ssh/ssh_host_rsa_key.pub" || true
+
+- name: Ensure nobody access
+  shell: chown -R nobody "/vm/conf/{{item}}"
+
+- name: Define vm
   virt:
     name: "{{item}}"
     command: define
     xml: "{{ lookup('template', 'templates/vm.j2') }}"
-  with_items:
-    - "{{ groups['managers'] | union(groups['workers']) }}"
-- name: Start vms
+
+- name: Start vm
   virt:
     name: "{{item}}"
     state: running
-  with_items:
-    - "{{ groups['managers'] | union(groups['workers']) }}"
-

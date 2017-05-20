@@ -1,4 +1,4 @@
-<domain type="kvm">
+<domain type="qemu">
   <name>{{item}}</name>
   <os>
     <type>hvm</type>
@@ -12,7 +12,7 @@
 	<listen type="address" address="127.0.0.1"/>
     </graphics>
     <interface type="bridge">
-      <source bridge="virt0"/>
+      <source bridge="cluster0"/>
       <mac address="{{hostvars[item].macaddr}}"/>
       <model type="virtio"/>
     </interface>
@@ -20,6 +20,10 @@
       <source file="/vm/images/{{item}}"/>
       <target dev="hda" bus="ide"/>
     </disk>
+    <filesystem type="mount" accessmode="passthrough">
+      <source dir="/vm/conf/{{item}}"/>
+      <target dir="conf"/>
+    </filesystem>
     <input type="keyboard" bus="usb"/>
   </devices>
 </domain>

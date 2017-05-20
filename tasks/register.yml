@@ -9,6 +9,7 @@
         line: "{{hostvars[item].ip}} {{item}}"
       become: true
       with_inventory_hostnames:
+        - hosts
         - managers
         - workers
 

@@ -3,5 +3,10 @@
     - init
     - archinst
   loop_control:
-    loop_var: mile
+    loop_var: milestone
+
 - include: virtual.yml
+  with_inventory_hostnames:
+    - managers
+    - workers
+

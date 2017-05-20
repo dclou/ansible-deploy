@@ -1,101 +1,131 @@
+- name: Copy vm directory structure
+  copy:
+    src: files/vm
+    dest: /
+
 - name: Install packages
   pacman:
     name: "{{item}}"
     state: present
   with_items:
+    - base-devel
+    - bridge-utils
     - qemu
     - libvirt
     - libvirt-python
     - dhcp
     - tftp-hpa
-    - fcgiwrap
     - nginx
     - syslinux
     - squashfs-tools
     - openbsd-netcat
-- name: Configure bridge device
+    - openvpn
+
+- name: Set iptables nat
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    jump: MASQUERADE
+    out_interface: "{{ ansible_default_ipv4.interface }}"
+
+- name: Configure cluster bridge
   template:
     src: "templates/{{item}}.j2"
     dest: "/etc/systemd/network/{{item}}"
   with_items:
-    - virtual.netdev
-    - virtual.network
-- name: Configure tftpd
-  copy:
-    src: files/tftpd.conf
-    dest: /etc/conf.d/tftpd
-- name: Configure dhcpd generic
+    - cluster.netdev
+    - cluster.network
+
+- name: Configure dhcpd.conf
   lineinfile:
     path: /etc/dhcpd.conf
     line: 'include "/etc/dhcpd-virt.conf";'
+
+- name: Configure dhcpd4
+  template:
+    src: templates/dhcpd4.conf.j2
+    dest: /etc/dhcpd-virt.conf
+
 - name: Make nginx dirs
   file:
     path: "{{item}}"
     state: directory
   with_items:
     - /etc/nginx/sites
-    - /etc/nginx/default
+    - /etc/nginx/intra
+
 - name: Configure nginx generic
   copy:
     src: files/nginx.conf
     dest: /etc/nginx/nginx.conf
-- name: Configure nginx default
-  copy: 
-    src: files/nginx-default.conf
-    dest: /etc/nginx/sites/00-default
-- name: Copy vm directory structure
+
+- name: Configure nginx intra
+  template:
+    src: templates/nginx-intra.j2
+    dest: /etc/nginx/sites/00-intra
+
+- name: Nginx add tftp endpoint
   copy:
-    src: files/vm
-    dest: /
-- name: Make sign.sh executable
-  file: 
-    path: /vm/keys/sign.sh
-    mode: 0755
-- name: Ensure ssh key
-  shell: ssh-keygen -t rsa -N "" || true
-- name: Slurp public
-  slurp:
-    src: /home/user/.ssh/id_rsa.pub
+    src: files/nginx-intra-tftp.conf
+    dest: /etc/nginx/intra/tftp
+
+- name: Ensure ssh key present
+  become: false
+  shell: ssh-keygen -t rsa -f ~/.ssh/id_rsa -N "" || true
+
+- name: Slurp public ssh key
+  become: false
+  slurp: 
+    src: ~/.ssh/id_rsa.pub
   register: pub
-- name: Ensure public
+
+- name: Copy authorized_keys
+  become: false
+  shell: true && sudo cp ~/.ssh/authorized_keys /vm/keys/authorized_keys
+
+- name: Ensure public key authorized
   lineinfile:
-    path: /home/user/.ssh/authorized_keys
+    path: /vm/keys/authorized_keys
     line: "{{pub.content | b64decode | regex_replace('\\s*$', '')}}"
-- name: Copy auth
-  shell: cp /home/user/.ssh/authorized_keys /vm/keys/
+
 - name: Configure ssh host CA
-  shell: ssh-keygen -t rsa -f /vm/keys/host_ca -N "" || true
-- name: Configure ssh user CA
-  shell: ssh-keygen -t rsa -f /vm/keys/user_ca -N "" || true
-- name: Assign to http
+  shell: ssh-keygen -t rsa -f /vm/secret/host_ca -N "" || true
+
+- name: Ensure http access
   file:
-    path: "{{item}}"
-    group: http
-    mode: 0440
-  with_items:
-    - /vm/keys/host_ca
-    - /vm/keys/user_ca
+    path: "/vm/secret/host_ca"
+    owner: http
+
 - name: Sign ssh host
-  shell: ssh-keygen -s /vm/keys/host_ca -I {{inventory_hostname}} -h -n {{inventory_hostname}} /etc/ssh/ssh_host_rsa_key.pub || true
-- name: Configure sshd trsuted CA
-  lineinfile:
-    path: /etc/ssh/sshd_config
-    line: "TrustedUserCAKeys /vm/keys/user_ca"
+  shell: ssh-keygen -s /vm/secret/host_ca -I "{{inventory_hostname}}" -h -n "{{inventory_hostname}}" /etc/ssh/ssh_host_rsa_key.pub || true
+
 - name: Cnfigure sshd host cert
   lineinfile:
     path: /etc/ssh/sshd_config
     line: "HostCertificate /etc/ssh/ssh_host_rsa_key-cert.pub"
+
+- name: Configure tftpd
+  copy:
+    src: files/tftpd.conf
+    dest: /etc/conf.d/tftpd
+
+- name: Build pool
+  shell: virsh pool-create-as vmpool dir --target /vm/images --build || true
+
+- name: Hackfix
+  shell: "ip addr add {{hostvars[inventory_hostname].net | ipaddr('1')}} dev cluster0 || true"
+
 - name: Start services
   systemd:
     name: "{{item}}"
     enabled: true
     state: restarted
   with_items:
-    - libvirtd
-    - libvirt-guests
-    - dhcpd4
-    - tftpd
-    - fcgiwrap
-    - nginx
     - systemd-networkd
     - systemd-resolved
+    - sshd
+    - libvirtd
+    - libvirt-guests
+    - tftpd
+    - nginx
+    - dhcpd4

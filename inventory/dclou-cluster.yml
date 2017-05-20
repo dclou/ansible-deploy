@@ -1,0 +1,23 @@
+[hosts]
+dclou-host ansible_host=10.10.10.10 ip=10.10.50.1
+[hosts:vars]
+net=10.10.50.0/24
+
+[managers]
+dclou-manager0 ip=10.10.50.11 macaddr=10:00:00:00:00:00
+dclou-manager1 ip=10.10.50.12 macaddr=10:00:00:00:00:01
+dclou-manager2 ip=10.10.50.13 macaddr=10:00:00:00:00:02
+[managers:vars]
+memory=4096
+disk=20G
+
+[workers]
+dclou-worker0 ip=10.10.50.21 macaddr=20:00:00:00:00:00
+dclou-worker1 ip=10.10.50.22 macaddr=20:00:00:00:00:01
+dclou-worker2 ip=10.10.50.23 macaddr=20:00:00:00:00:02
+dclou-worker3 ip=10.10.50.24 macaddr=20:00:00:00:00:03
+dclou-worker4 ip=10.10.50.25 macaddr=20:00:00:00:00:04
+dclou-worker5 ip=10.10.50.26 macaddr=20:00:00:00:00:05
+[workers:vars]
+memory=2048
+disk=10G

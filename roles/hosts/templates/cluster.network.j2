@@ -1,0 +1,7 @@
+[Match]
+Name=cluster0
+
+[Network]
+Address={{hostvars[inventory_hostname].net | ipaddr('1')}}
+DNS=8.8.8.8
+DNS=8.8.4.4

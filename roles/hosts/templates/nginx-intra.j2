@@ -1,0 +1,9 @@
+server {
+  listen {{hostvars[inventory_hostname].net | ipaddr('1') | ipaddr('address')}}:80;
+
+  location / {
+  }
+
+  include /etc/nginx/intra/*;
+}
+

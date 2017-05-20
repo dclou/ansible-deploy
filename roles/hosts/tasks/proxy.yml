@@ -1,9 +1,8 @@
 - stat:
-    path: "/vm/milestones/{{mile}}"
-  register: reg
-- include: "{{mile}}.yml"
-  when: reg.stat.exists == false
+    path: "/vm/milestones/{{milestone}}"
+  register: mile
+- include: "{{milestone}}.yml"
+  when: mile.stat.exists == false
 - file:
-    path: "/vm/milestones/{{mile}}"
+    path: "/vm/milestones/{{milestone}}"
     state: touch
-  when: reg.stat.exists == false
