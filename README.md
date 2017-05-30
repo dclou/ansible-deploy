@@ -13,5 +13,5 @@ Remote:
 
 Invocation
 ==========
-    ansible-playbook -i inventory/navydata cluster.yml
+    ansible-playbook -i inventory/navydata install.yml
 
