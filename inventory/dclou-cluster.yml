@@ -2,7 +2,6 @@
 dclou-host ansible_host=178.159.32.129 ip=10.10.50.1
 [hosts:vars]
 net=10.10.50.0/24
-name=dclou
 
 [managers]
 dclou-manager0 ip=10.10.50.11 macaddr=10:00:00:00:00:00
