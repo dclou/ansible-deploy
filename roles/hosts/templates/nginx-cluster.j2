@@ -1,0 +1,43 @@
+upstream cluster-main {
+{% for host in groups['managers'] %}
+  server {{hostvars[host].ip}}:8080;
+{% endfor %}
+}
+
+upstream cluster-admin {
+{% for host in groups['managers'] %}
+  server {{hostvars[host].ip}}:7070;
+{% endfor %}
+}
+
+upstream cluster-discovery {
+{% for host in groups['managers'] %}
+  server {{hostvars[host].ip}}:8761;
+{% endfor %}
+}
+
+server {
+  listen 80;
+
+  location = /admin/console {
+    rewrite .* /admin/console/ permanent;
+  }
+  location ~ ^/admin/console/?(.*)$ {
+    proxy_pass http://cluster-admin/$1;
+  }
+
+  location ~ ^/eureka/(.*)$ {
+    proxy_pass http://cluster-discovery/eureka/$1;
+  }
+
+  location = /admin/discovery {
+    rewrite .* /admin/discovery/ permanent;
+  }
+  location ~ ^/admin/discovery/?(.*)$ {
+    proxy_pass http://cluster-discovery/$1;
+  }
+
+  location / {
+    proxy_pass http://cluster-main;
+  }
+}

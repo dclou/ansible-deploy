@@ -1,0 +1,37 @@
+- name: Make volume
+  shell: virsh vol-create-as vmpool {{item}} {{hostvars[item].disk}} || true
+
+- name: Make confdir
+  file:
+    path: "/vm/conf/{{item}}/ssh"
+    state: directory
+
+- name: Make hostname
+  template:
+    src: templates/hostname.j2
+    dest: "/vm/conf/{{item}}/hostname"
+
+- name: Copy authorized_keys
+  shell: cp /vm/keys/authorized_keys "/vm/conf/{{item}}/authorized_keys"
+
+- name: Gen ssh host key
+  shell: ssh-keygen -f "/vm/conf/{{item}}/ssh/ssh_host_rsa_key" -N "" -t rsa || true
+
+- name: Sign ssh host
+  shell: ssh-keygen -s /vm/secret/host_ca -I "{{item}}" -h -n "{{item}}" "/vm/conf/{{item}}/ssh/ssh_host_rsa_key.pub" || true
+
+- name: Archive config
+  archive:
+    path: "/vm/conf/{{item}}/"
+    dest: "/vm/conf/{{item}}.tar.gz"
+
+- name: Define vm
+  virt:
+    name: "{{item}}"
+    command: define
+    xml: "{{ lookup('template', 'templates/vm.j2') }}"
+
+- name: Start vm
+  virt:
+    name: "{{item}}"
+    state: running

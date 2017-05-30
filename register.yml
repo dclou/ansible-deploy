@@ -1,17 +1,30 @@
-- include: tasks/register.yml 
-  vars: 
-    nodes: localhost
-- include: tasks/register.yml 
-  vars: 
-    nodes: hosts managers workers
-- hosts: managers
-  become: true
-  roles:
-    - common
-    - managers
-- hosts: managers[0] workers
-  become: true
-  roles:
-    - common
-    - workers
+- hosts: localhost
+  become: false
+  tasks:
+    - file:
+        path: ~/.ssh/config
+        state: touch
+    - lineinfile:
+        path: ~/.ssh/config
+        line: "Host {{item}}\n\tProxyCommand ssh {{hostvars[groups['hosts'][0]].ansible_host}} -W %h:%p"
+      with_inventory_hostnames:
+        - hosts
+        - managers
+        - workers
+    - shell: ssh "{{hostvars[groups['hosts'][0]].ansible_host}}" cat /vm/secret/host_ca.pub
+      register: hosts_pub
+    - lineinfile:
+        path: ~/.ssh/known_hosts
+        line: "@cert-authority * {{hosts_pub.stdout | regex_replace('\\s*$', '')}}"
+
+- hosts: localhost hosts managers workers
+  tasks:
+    - lineinfile:
+        path: /etc/hosts
+        line: "{{hostvars[item].ip}} {{item}}"
+      become: true
+      with_inventory_hostnames:
+        - hosts
+        - managers
+        - workers
 

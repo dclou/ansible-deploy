@@ -1,7 +1,9 @@
 [Unit]
 Description=Post-install Archlinux
-Wants=network.target network-online.target
-After=network.target network-online.target
+Wants=network.target network-online.target systemd-resolved.service
+After=network.target network-online.target systemd-resolved.service
+
+{% set net = hostvars[inventory_hostname].net %}
 
 [Service]
 Type=oneshot
@@ -9,9 +11,10 @@ StandardOutput=tty
 User=user
 RemainAfterExit=yes
 ExecStart=/usr/bin/env sh -c '\
-  sleep 10 && \
-  sudo systemctl disable post-install && \
-  nc -l -p 50000; \
+  set -x && \
+  curl http://{{net | ipaddr('1') | ipaddr('address')}}/conf/post-install.sh -o /tmp/post-install.sh && \
+  chmod +x /tmp/post-install.sh && \
+  /tmp/post-install.sh {{net | ipaddr('1') | ipaddr('address')}}; \
 '
 
 [Install]

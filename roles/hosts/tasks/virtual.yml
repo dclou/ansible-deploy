@@ -1,35 +1,36 @@
-- name: Make volume
-  shell: virsh vol-create-as vmpool {{item}} {{hostvars[item].disk}} || true
+- include: virt-node.yml
+  with_inventory_hostnames:
+    - managers
+    - workers
 
-- name: Make confdir
-  file:
-    path: "/vm/conf/{{item}}/ssh"
-    state: directory
+- name: Waiting to install...
+  wait_for:
+    host: "{{hostvars[item].ip}}"
+    port: 50001
+    timeout: 3600
+  with_inventory_hostnames:
+    - managers
+    - workers
 
-- name: Make hostname
-  template:
-    src: templates/hostname.j2
-    dest: "/vm/conf/{{item}}/hostname"
-
-- name: Copy authorized_keys
-  shell: cp /vm/keys/authorized_keys "/vm/conf/{{item}}/authorized_keys"
-
-- name: Gen ssh host key
-  shell: ssh-keygen -f "/vm/conf/{{item}}/ssh/ssh_host_rsa_key" -N "" -t rsa || true
-
-- name: Sign ssh host
-  shell: ssh-keygen -s /vm/secret/host_ca -I "{{item}}" -h -n "{{item}}" "/vm/conf/{{item}}/ssh/ssh_host_rsa_key.pub" || true
-
-- name: Ensure nobody access
-  shell: chown -R nobody "/vm/conf/{{item}}"
-
-- name: Define vm
-  virt:
+- virt:
     name: "{{item}}"
-    command: define
-    xml: "{{ lookup('template', 'templates/vm.j2') }}"
+    command: destroy
+  with_inventory_hostnames:
+    - managers
+    - workers
 
-- name: Start vm
-  virt:
+- virt:
     name: "{{item}}"
-    state: running
+    command: start
+  with_inventory_hostnames:
+    - managers
+    - workers
+
+- name: Waiting to reboot...
+  wait_for:
+    host: "{{hostvars[item].ip}}"
+    port: 50000
+    timeout: 3600
+  with_inventory_hostnames:
+    - managers
+    - workers

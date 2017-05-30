@@ -2,11 +2,6 @@
   with_items:
     - init
     - archinst
+    - virtual
   loop_control:
     loop_var: milestone
-
-- include: virtual.yml
-  with_inventory_hostnames:
-    - managers
-    - workers
-

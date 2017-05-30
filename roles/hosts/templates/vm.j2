@@ -1,10 +1,16 @@
-<domain type="qemu">
+<domain type="kvm">
   <name>{{item}}</name>
+  <features>
+    <acpi/>
+  </features>
   <os>
     <type>hvm</type>
     <boot dev="hd"/>
     <boot dev="network"/>
   </os>
+  <on_poweroff>restart</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
   <memory unit="MiB">{{hostvars[item].memory}}</memory>
   <devices>
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
@@ -14,16 +20,12 @@
     <interface type="bridge">
       <source bridge="cluster0"/>
       <mac address="{{hostvars[item].macaddr}}"/>
-      <model type="virtio"/>
     </interface>
     <disk type="file" device="disk">
       <source file="/vm/images/{{item}}"/>
       <target dev="hda" bus="ide"/>
     </disk>
-    <filesystem type="mount" accessmode="passthrough">
-      <source dir="/vm/conf/{{item}}"/>
-      <target dir="conf"/>
-    </filesystem>
     <input type="keyboard" bus="usb"/>
+    <memballoon model="none"/>
   </devices>
 </domain>

@@ -19,14 +19,18 @@
     - syslinux
     - squashfs-tools
     - openbsd-netcat
-    - openvpn
 
-- name: Set iptables nat
+
+- name: Configure iptables
   iptables:
     table: nat
     chain: POSTROUTING
+    out_interface: "{{ansible_default_ipv4.interface}}"
     jump: MASQUERADE
-    out_interface: "{{ ansible_default_ipv4.interface }}"
+    state: present
+
+- name: Configure sysctl
+  shell: sysctl net.ipv4.ip_forward=1
 
 - name: Configure cluster bridge
   template:
@@ -35,6 +39,13 @@
   with_items:
     - cluster.netdev
     - cluster.network
+
+- name: Make hostname
+  template:
+    src: templates/hostname.j2
+    dest: "/etc/hostname"
+  with_items:
+    - "{{inventory_hostname}}"
 
 - name: Configure dhcpd.conf
   lineinfile:
@@ -59,10 +70,20 @@
     src: files/nginx.conf
     dest: /etc/nginx/nginx.conf
 
+- name: Configure libvirt qemu.conf
+  copy:
+    src: files/qemu.conf
+    dest: /etc/libvirt/qemu.conf
+
+- name: Configure nginx cluster
+  template:
+    src: templates/nginx-cluster.j2
+    dest: /etc/nginx/sites/00-cluster
+
 - name: Configure nginx intra
   template:
     src: templates/nginx-intra.j2
-    dest: /etc/nginx/sites/00-intra
+    dest: /etc/nginx/sites/01-intra
 
 - name: Nginx add tftp endpoint
   copy:
@@ -90,19 +111,6 @@
 
 - name: Configure ssh host CA
   shell: ssh-keygen -t rsa -f /vm/secret/host_ca -N "" || true
-
-- name: Ensure http access
-  file:
-    path: "/vm/secret/host_ca"
-    owner: http
-
-- name: Sign ssh host
-  shell: ssh-keygen -s /vm/secret/host_ca -I "{{inventory_hostname}}" -h -n "{{inventory_hostname}}" /etc/ssh/ssh_host_rsa_key.pub || true
-
-- name: Cnfigure sshd host cert
-  lineinfile:
-    path: /etc/ssh/sshd_config
-    line: "HostCertificate /etc/ssh/ssh_host_rsa_key-cert.pub"
 
 - name: Configure tftpd
   copy:
