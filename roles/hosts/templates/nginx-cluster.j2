@@ -1,43 +1,112 @@
 upstream cluster-main {
 {% for host in groups['managers'] %}
-  server {{hostvars[host].ip}}:8080;
+	server {{hostvars[host].ip}}:8080;
 {% endfor %}
 }
 
 upstream cluster-admin {
 {% for host in groups['managers'] %}
-  server {{hostvars[host].ip}}:7070;
+	server {{hostvars[host].ip}}:7070;
 {% endfor %}
 }
 
 upstream cluster-discovery {
 {% for host in groups['managers'] %}
-  server {{hostvars[host].ip}}:8761;
+	server {{hostvars[host].ip}}:8761;
+{% endfor %}
+}
+
+upstream cluster-order {	
+{% for host in groups['managers'] %}
+	server {{hostvars[host].ip}}:8083;
+{% endfor %}
+}
+
+upstream cluster-portainer {
+{% for host in groups['managers'] %}
+	server {{hostvars[host].ip}}:9000;
+{% endfor %}
+}
+
+upstream cluster-kibana {
+{% for host in groups['managers'] %}
+	server {{hostvars[host].ip}}:5601;
+{% endfor %}
+}
+
+upstream cluster-zipkin {
+{% for host in groups['managers'] %}
+	server {{hostvars[host].ip}}:9411;
 {% endfor %}
 }
 
 server {
-  listen 80;
+	listen 80;
+	server_name admin.zotona.com;
+	location / {
+		proxy_pass http://cluster-admin;
+		proxy_set_header Host      $host;
+		proxy_set_header X-Real-IP $remote_addr;
 
-  location = /admin/console {
-    rewrite .* /admin/console/ permanent;
-  }
-  location ~ ^/admin/console/?(.*)$ {
-    proxy_pass http://cluster-admin/$1;
-  }
+	}
+}
 
-  location ~ ^/eureka/(.*)$ {
-    proxy_pass http://cluster-discovery/eureka/$1;
-  }
+server {
+	listen 80;
+	server_name docker.zotona.com;
+	location / {
+		proxy_pass http://cluster-portainer;
+		proxy_set_header Host      $host;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+}
 
-  location = /admin/discovery {
-    rewrite .* /admin/discovery/ permanent;
-  }
-  location ~ ^/admin/discovery/?(.*)$ {
-    proxy_pass http://cluster-discovery/$1;
-  }
+server {
+	listen 80;
+	server_name demo.zotona.com;
+	location / {
+		proxy_pass http://cluster-order;
+		proxy_set_header Host      $host;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+}
 
-  location / {
-    proxy_pass http://cluster-main;
-  }
+server {
+	listen 80;
+	server_name api.zotona.com;
+	location / {
+		proxy_pass http://cluster-main;
+		proxy_set_header Host      $host;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+}
+
+server {
+	listen 80;
+	server_name logs.zotona.com;
+	location / {
+		proxy_pass http://cluster-kibana;
+		proxy_set_header Host      $host;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+}
+
+server {
+	listen 80;
+	server_name zipkin.zotona.com;
+	location / {
+		proxy_pass http://cluster-zipkin;
+		proxy_set_header Host      $host;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+}
+
+server {
+	listen 80;
+	server_name 178.159.32.129;
+	location / {
+		proxy_pass http://cluster-main;
+		proxy_set_header Host      $host;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
 }
