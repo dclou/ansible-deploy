@@ -7,11 +7,11 @@ net=10.10.50.0/24
 dclou-manager0 ip=10.10.50.11 macaddr=10:00:00:00:00:00
 [managers:vars]
 memory=8192
-disk=20G
+disk=50G
 
 [workers]
 dclou-worker0 ip=10.10.50.21 macaddr=20:00:00:00:00:00
 dclou-worker1 ip=10.10.50.22 macaddr=20:00:00:00:00:01
 [workers:vars]
 memory=8192
-disk=10G
+disk=50G
